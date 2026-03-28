@@ -3,7 +3,8 @@ import { Send, Bot, User, Cpu, Zap, Shield, ChevronRight, Home, Menu, X } from '
 import { motion, AnimatePresence } from 'motion/react';
 import { Card, Button, Badge } from './UI';
 import { Message, AVAILABLE_ROUTERS, RoutingResult } from '../types';
-import { routeQuery, getChatResponse } from '../services/geminiService';
+import { getChatResponseFromBackend, routeQueryWithBackend, routerAPI } from '../services/routerApi';
+import { historyService, ChatSession } from '../services/historyService';
 import { cn } from '../lib/utils';
 import ReactMarkdown from 'react-markdown';
 import LandingPage from './LandingPage';
@@ -14,10 +15,12 @@ import Leaderboard from './Leaderboard';
 import Stats from './Stats';
 import ChatHistory from './ChatHistory';
 import Settings from './Settings';
+import DocumentationPage from './DocumentationPage';
 
 export default function HRouterApp() {
   const [activeDashboardView, setActiveDashboardView] = useState<DashboardView>('home');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [backendOnline, setBackendOnline] = useState(false);
   
   const [chatMessages, setChatMessages] = useState<Message[]>([
     {
@@ -32,6 +35,21 @@ export default function HRouterApp() {
   const [isChatting, setIsChatting] = useState(false);
   
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Check backend health on mount
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const health = await routerAPI.getHealth();
+        setBackendOnline(health.status === 'ok');
+      } catch {
+        setBackendOnline(false);
+      }
+    };
+    checkHealth();
+    const interval = setInterval(checkHealth, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -57,7 +75,8 @@ export default function HRouterApp() {
     setIsChatting(true);
 
     try {
-      const route = await routeQuery(chatInput, 'round_robin');
+      // Use backend router API instead of Gemini
+      const route = await routeQueryWithBackend(chatInput, 'auto');
       
       const assistantMsgId = (Date.now() + 1).toString();
       const initialAssistantMsg: Message = {
@@ -70,7 +89,7 @@ export default function HRouterApp() {
       
       setChatMessages(prev => [...prev, initialAssistantMsg]);
 
-      const response = await getChatResponse(chatInput, route.modelName, (chunk) => {
+      const response = await getChatResponseFromBackend(chatInput, route.modelId, (chunk) => {
         setChatMessages(prev => prev.map(msg => 
           msg.id === assistantMsgId 
             ? { ...msg, content: msg.content + chunk }
@@ -80,11 +99,38 @@ export default function HRouterApp() {
       
       setChatMessages(prev => prev.map(msg => 
         msg.id === assistantMsgId 
-          ? { ...msg, content: response.content }
+          ? { ...msg, content: response.content, model: response.actualModel || route.modelName }
           : msg
       ));
+
+      // Save to history
+      const newHistorySession: ChatSession = {
+        id: Date.now().toString(),
+        title: chatInput.slice(0, 40) + (chatInput.length > 40 ? '...' : ''),
+        date: 'Just now',
+        timestamp: Date.now(),
+        model: response.actualModel || route.modelName,
+        tokens: response.stats?.totalTokens || 0,
+        cost: `$${(response.stats?.costPer1k || 0 / 1000 * (response.stats?.totalTokens || 0)).toFixed(4)}`,
+        messages: [...chatMessages, userMsg, {
+          id: assistantMsgId,
+          role: 'assistant',
+          content: response.content,
+          model: response.actualModel || route.modelName,
+          timestamp: Date.now(),
+        }]
+      };
+      historyService.saveSession(newHistorySession);
     } catch (error) {
       console.error('Chat error:', error);
+      const errorMsgId = (Date.now() + 2).toString();
+      setChatMessages(prev => [...prev, {
+        id: errorMsgId,
+        role: 'assistant',
+        content: 'Sorry, I encountered an error connecting to the backend. Please ensure the server is running on port 8000.',
+        model: 'System',
+        timestamp: Date.now(),
+      }]);
     } finally {
       setIsChatting(false);
     }
@@ -93,7 +139,10 @@ export default function HRouterApp() {
   const renderDashboardContent = () => {
     switch (activeDashboardView) {
       case 'home':
-        return <LandingPage onStart={() => setActiveDashboardView('battle')} />;
+        return <LandingPage 
+          onStart={() => setActiveDashboardView('battle')} 
+          onDocs={() => setActiveDashboardView('documentation')}
+        />;
       case 'battle':
         return <BattleMode />;
       case 'side-by-side':
@@ -106,6 +155,8 @@ export default function HRouterApp() {
         return <ChatHistory />;
       case 'settings':
         return <Settings />;
+      case 'documentation':
+        return <DocumentationPage onBack={() => setActiveDashboardView('home')} />;
       default:
         return <BattleMode />;
     }
@@ -145,8 +196,11 @@ export default function HRouterApp() {
 
         <main className={cn(
           "flex-1 relative",
-          (activeDashboardView === 'side-by-side' || activeDashboardView === 'battle') ? "p-0 overflow-hidden" : "overflow-y-auto scrollbar-hide",
-          activeDashboardView === 'home' ? "p-0" : "p-4 md:p-6 lg:p-10"
+          (activeDashboardView === 'side-by-side' || activeDashboardView === 'battle')
+            ? "p-0 overflow-hidden"
+            : activeDashboardView === 'home'
+              ? "p-0 overflow-y-auto scrollbar-hide"
+              : "p-4 md:p-6 lg:p-10 overflow-y-auto scrollbar-hide"
         )}>
           <AnimatePresence mode="wait">
             <motion.div

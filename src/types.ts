@@ -67,10 +67,10 @@ export const AVAILABLE_ROUTERS: RouterInfo[] = [
 ];
 
 export const MODELS: ModelInfo[] = [
-  { id: 'qwen2.5-7b', name: 'Qwen 2.5 7B', size: '7B', provider: 'NVIDIA', description: 'Fast, efficient, and versatile.' },
-  { id: 'llama-3.1-8b', name: 'Llama 3.1 8B', size: '8B', provider: 'NVIDIA', description: 'State-of-the-art reasoning and logic.' },
-  { id: 'mistral-7b', name: 'Mistral 7B', size: '7B', provider: 'NVIDIA', description: 'High performance with low latency.' },
-  { id: 'mixtral-8x7b', name: 'Mixtral 8x7B', size: '46.7B', provider: 'NVIDIA', description: 'Powerful mixture-of-experts model.' },
+  { id: 'qwen2.5-7b', name: 'Qwen 2.5 7B', size: '7B', provider: 'Qwen', description: 'Fast, efficient, and versatile.' },
+  { id: 'llama-3.1-8b', name: 'Llama 3.1 8B', size: '8B', provider: 'Meta', description: 'State-of-the-art reasoning and logic.' },
+  { id: 'mistral-7b', name: 'Mistral 7B', size: '7B', provider: 'Mistral', description: 'High performance with low latency.' },
+  { id: 'mixtral-8x7b', name: 'Mixtral 8x7B', size: '46.7B', provider: 'Mistral', description: 'Powerful mixture-of-experts model.' },
 ];
 
 export const INITIAL_LEADERBOARD: LeaderboardEntry[] = [

@@ -52,8 +52,8 @@ export const Button = ({
   );
 };
 
-export const Badge = ({ children, className }: { children: React.ReactNode; className?: string }) => (
-  <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-500 border border-gray-200 transition-colors", className)}>
+export const Badge = ({ children, className, style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) => (
+  <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-500 border border-gray-200 transition-colors", className)} style={style}>
     {children}
   </span>
 );

@@ -32,7 +32,7 @@ interface LeaderboardModel {
   name: string;
   score: number;
   votes: string;
-  provider: 'OpenAI' | 'Google' | 'Anthropic' | 'xAI' | 'Mistral' | 'Meta' | 'Other';
+  provider: 'OpenAI' | 'Google' | 'Anthropic' | 'xAI' | 'Mistral' | 'Meta' | 'DeepSeek' | 'Qwen' | 'Llama' | 'NVIDIA' | 'Other';
   hasInfo?: boolean;
 }
 
@@ -50,6 +50,32 @@ const CATEGORIES: { id: Category; icon: any }[] = [
   { id: 'Video Edit', icon: Clapperboard },
 ];
 
+const ProviderIcon = ({ provider }: { provider: LeaderboardModel['provider'] }) => {
+  const icons: Record<string, { bg: string; text: string; label: string }> = {
+    'OpenAI': { bg: '#10A37F', text: 'white', label: 'GPT' },
+    'Google': { bg: '#4285F4', text: 'white', label: 'G' },
+    'Anthropic': { bg: '#D97757', text: 'white', label: 'C' },
+    'xAI': { bg: '#000000', text: 'white', label: 'X' },
+    'Mistral': { bg: '#FF6B00', text: 'white', label: 'M' },
+    'Meta': { bg: '#0668E1', text: 'white', label: 'Ll' },
+    'DeepSeek': { bg: '#4F46E5', text: 'white', label: 'D' },
+    'Qwen': { bg: '#7C3AED', text: 'white', label: 'Q' },
+    'Llama': { bg: '#065F46', text: 'white', label: 'L' },
+    'NVIDIA': { bg: '#76B900', text: 'white', label: 'N' },
+    'Other': { bg: '#6B7280', text: 'white', label: '?' },
+  };
+  
+  const { bg, text, label } = icons[provider] || icons['Other'];
+  
+  return (
+    <div 
+      className="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-black shrink-0"
+      style={{ backgroundColor: bg, color: text }}
+    >
+      {label}
+    </div>
+  );
+};
 const MOCK_DATA: Record<Exclude<Category, 'Overview'>, LeaderboardModel[]> = {
   'Text': [
     { rank: 1, name: 'claude-opus-4-6-thinking', score: 1504, votes: '12,730', provider: 'Anthropic' },
@@ -69,7 +95,7 @@ const MOCK_DATA: Record<Exclude<Category, 'Overview'>, LeaderboardModel[]> = {
     { rank: 5, name: 'claude-opus-4-5-20251101', score: 1465, votes: '13,559', provider: 'Anthropic' },
     { rank: 6, name: 'gpt-5.4-high (codex-harness)', score: 1457, votes: '1,488', provider: 'OpenAI' },
     { rank: 7, name: 'gemini-3.1-pro-preview', score: 1455, votes: '4,733', provider: 'Google' },
-    { rank: 8, name: 'glm-5', score: 1445, votes: '4,265', provider: 'Other' },
+    { rank: 8, name: 'deepseek-v3-code', score: 1445, votes: '4,265', provider: 'DeepSeek' },
   ],
   'Vision': [
     { rank: 1, name: 'gpt-5-vision-latest', score: 1420, votes: '8,210', provider: 'OpenAI' },
@@ -87,8 +113,8 @@ const MOCK_DATA: Record<Exclude<Category, 'Overview'>, LeaderboardModel[]> = {
     { rank: 2, name: 'gpt-image-1.5-high-fidelity', score: 1244, votes: '66,785', provider: 'OpenAI' },
     { rank: 3, name: 'gemini-3-pro-image-preview', score: 1233, votes: '61,854', provider: 'Google' },
     { rank: 4, name: 'gemini-3-pro-image-preview-v2', score: 1232, votes: '82,543', provider: 'Google' },
-    { rank: 5, name: 'mai-image-2', score: 1190, votes: '11,001', provider: 'Other' },
-    { rank: 6, name: 'reve-v1.5', score: 1177, votes: '7,797', provider: 'Other' },
+    { rank: 5, name: 'midjourney-v7', score: 1190, votes: '11,001', provider: 'Other' },
+    { rank: 6, name: 'stable-diffusion-3.5', score: 1177, votes: '7,797', provider: 'Other' },
     { rank: 7, name: 'grok-imagine-image', score: 1173, votes: '53,997', provider: 'xAI' },
     { rank: 8, name: 'flux-2-max', score: 1166, votes: '70,018', provider: 'Other' },
   ],
@@ -118,23 +144,6 @@ const MOCK_DATA: Record<Exclude<Category, 'Overview'>, LeaderboardModel[]> = {
     { rank: 1, name: 'veo-3.1-edit', score: 1410, votes: '5,670', provider: 'Google' },
     { rank: 2, name: 'adobe-firefly-video', score: 1390, votes: '4,560', provider: 'Other' },
   ],
-};
-
-const ProviderIcon = ({ provider }: { provider: LeaderboardModel['provider'] }) => {
-  switch (provider) {
-    case 'OpenAI':
-      return <div className="w-4 h-4 bg-[#74aa9c] rounded-sm flex items-center justify-center text-[10px] text-white font-bold">O</div>;
-    case 'Google':
-      return <div className="w-4 h-4 bg-[#4285f4] rounded-sm flex items-center justify-center text-[10px] text-white font-bold">G</div>;
-    case 'Anthropic':
-      return <div className="w-4 h-4 bg-[#d97757] rounded-sm flex items-center justify-center text-[10px] text-white font-bold">A</div>;
-    case 'xAI':
-      return <div className="w-4 h-4 bg-white rounded-sm flex items-center justify-center text-[10px] text-black font-bold">X</div>;
-    case 'Meta':
-      return <div className="w-4 h-4 bg-[#0668E1] rounded-sm flex items-center justify-center text-[10px] text-white font-bold">M</div>;
-    default:
-      return <div className="w-4 h-4 bg-gray-600 rounded-sm flex items-center justify-center text-[10px] text-white font-bold">?</div>;
-  }
 };
 
 const LeaderboardTable = ({ category, data, compact = false, onExpand, searchQuery = '' }: { category: Category; data: LeaderboardModel[]; compact?: boolean; onExpand?: () => void; searchQuery?: string }) => {
@@ -168,13 +177,13 @@ const LeaderboardTable = ({ category, data, compact = false, onExpand, searchQue
       </div>
       
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
+        <table className="w-full text-left text-xs table-fixed">
           <thead>
             <tr className="text-gray-400 border-b border-gray-100">
-              <th className="px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Rank</th>
+              <th className="px-4 py-3 font-bold uppercase tracking-widest text-[10px] w-16">Rank</th>
               <th className="px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Model</th>
-              <th className="px-4 py-3 font-bold uppercase tracking-widest text-[10px] text-right">Score</th>
-              <th className="px-4 py-3 font-bold uppercase tracking-widest text-[10px] text-right">Votes</th>
+              <th className="px-4 py-3 font-bold uppercase tracking-widest text-[10px] text-right w-20">Score</th>
+              <th className="px-4 py-3 font-bold uppercase tracking-widest text-[10px] text-right w-24">Votes</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -183,24 +192,20 @@ const LeaderboardTable = ({ category, data, compact = false, onExpand, searchQue
                 key={model.name} 
                 className="hover:bg-gray-50 transition-all duration-300 relative group/row"
               >
-                {/* Hover glow effect */}
-                <div className="absolute inset-0 opacity-0 group-hover/row:opacity-100 transition-opacity duration-500 pointer-events-none">
-                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/20 via-purple-400/20 to-pink-400/20 blur-md" />
-                </div>
-                <td className="px-4 py-3 font-bold text-gray-400 relative z-10">{model.rank}</td>
+                <td className="px-4 py-3 font-bold text-gray-400 relative z-10 w-16">{model.rank}</td>
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <ProviderIcon provider={model.provider} />
-                    <span className="font-bold text-gray-900 truncate max-w-[150px]">{model.name}</span>
+                    <span className="font-bold text-gray-900 truncate">{model.name}</span>
                     {model.hasInfo && (
-                      <div className="w-3 h-3 rounded-full border border-gray-200 flex items-center justify-center text-[8px] text-gray-400">
+                      <div className="w-4 h-4 rounded-full border border-gray-200 flex items-center justify-center text-[8px] text-gray-400 shrink-0">
                         i
                       </div>
                     )}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-right font-mono font-bold text-gray-700 relative z-10">{model.score}</td>
-                <td className="px-4 py-3 text-right font-mono text-gray-400 relative z-10">{model.votes}</td>
+                <td className="px-4 py-3 text-right font-mono font-bold text-gray-700 relative z-10 w-20">{model.score}</td>
+                <td className="px-4 py-3 text-right font-mono text-gray-400 relative z-10 w-24">{model.votes}</td>
               </tr>
             ))}
           </tbody>

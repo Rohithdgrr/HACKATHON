@@ -5,7 +5,6 @@ import {
   Columns, 
   Trophy, 
   Settings as SettingsIcon, 
-  HelpCircle,
   Menu,
   X,
   Home as HomeIcon,
@@ -15,7 +14,7 @@ import {
 import { cn } from '../lib/utils';
 import { Button } from './UI';
 
-export type DashboardView = 'home' | 'battle' | 'side-by-side' | 'leaderboard' | 'stats' | 'history' | 'settings';
+export type DashboardView = 'home' | 'battle' | 'side-by-side' | 'leaderboard' | 'stats' | 'history' | 'settings' | 'documentation';
 
 interface SidebarProps {
   activeView: DashboardView;
@@ -115,17 +114,6 @@ export default function Sidebar({ activeView, onViewChange, isOpen, onToggle }: 
                 Settings
               </span>
             </button>
-            <div className="pt-4 mt-2 border-t border-gray-50">
-              <div className={cn("flex items-center gap-3 px-3 py-2", !isOpen && "justify-center")}>
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 bg-gray-900 text-white">
-                  JD
-                </div>
-                <div className={cn("flex flex-col overflow-hidden transition-opacity", !isOpen && "lg:opacity-0 lg:w-0")}>
-                  <span className="text-sm font-bold truncate text-gray-900">John Doe</span>
-                  <span className="text-[10px] text-gray-500 truncate">Pro Plan</span>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </aside>
