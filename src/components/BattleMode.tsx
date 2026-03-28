@@ -305,15 +305,22 @@ export default function BattleMode() {
 
           {/* Response content */}
           <div className="flex-1 min-h-[60px]">
-            {response.content ? (
+            {isStreaming ? (
+              response.content ? (
+                <MarkdownRenderer
+                  content={response.content}
+                  className="p-3 text-[13px] text-gray-700 leading-relaxed"
+                />
+              ) : (
+                <div className="p-3">
+                  <StreamingIndicator />
+                </div>
+              )
+            ) : response.content ? (
               <MarkdownRenderer
                 content={response.content}
                 className="p-3 text-[13px] text-gray-700 leading-relaxed"
               />
-            ) : isStreaming ? (
-              <div className="p-3">
-                <StreamingIndicator />
-              </div>
             ) : (
               <div className="p-3 text-gray-400 text-sm italic">Waiting for response...</div>
             )}
