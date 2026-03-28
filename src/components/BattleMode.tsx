@@ -124,7 +124,10 @@ export default function BattleMode() {
       setHistory(prev => [...prev, initialTurn]);
 
       // Run both requests independently (not Promise.all) so one failure doesn't block the other
+      console.log(`[Battle] Starting requests - Model A: ${modelAInfo.id}, Model B: ${modelBInfo.id}`);
+      
       const requestA = getChatResponseFromBackend(currentQuery, modelAInfo.id, (chunk) => {
+        console.log(`[Battle] Model A chunk:`, chunk?.substring(0, 50));
         setHistory(prev => {
           const newHistory = [...prev];
           const lastTurn = { ...newHistory[newHistory.length - 1] };
@@ -136,6 +139,7 @@ export default function BattleMode() {
           return newHistory;
         });
       }, `${sessionId}_A`).then(resp => {
+        console.log(`[Battle] Model A complete:`, resp.content?.substring(0, 50));
         setHistory(prev => {
           const newHistory = [...prev];
           const lastTurn = { ...newHistory[newHistory.length - 1] };
@@ -144,17 +148,18 @@ export default function BattleMode() {
           return newHistory;
         });
       }).catch(err => {
-        console.error('Model A error:', err);
+        console.error('[Battle] Model A error:', err);
         setHistory(prev => {
           const newHistory = [...prev];
           const lastTurn = { ...newHistory[newHistory.length - 1] };
-          lastTurn.responses.modelA.content = lastTurn.responses.modelA.content || 'Error: Failed to get response from Model A';
+          lastTurn.responses.modelA.content = lastTurn.responses.modelA.content || `Error: ${err.message || 'Failed to get response from Model A'}`;
           newHistory[newHistory.length - 1] = lastTurn;
           return newHistory;
         });
       });
 
       const requestB = getChatResponseFromBackend(currentQuery, modelBInfo.id, (chunk) => {
+        console.log(`[Battle] Model B chunk:`, chunk?.substring(0, 50));
         setHistory(prev => {
           const newHistory = [...prev];
           const lastTurn = { ...newHistory[newHistory.length - 1] };
@@ -166,6 +171,7 @@ export default function BattleMode() {
           return newHistory;
         });
       }, `${sessionId}_B`).then(resp => {
+        console.log(`[Battle] Model B complete:`, resp.content?.substring(0, 50));
         setHistory(prev => {
           const newHistory = [...prev];
           const lastTurn = { ...newHistory[newHistory.length - 1] };
@@ -174,11 +180,11 @@ export default function BattleMode() {
           return newHistory;
         });
       }).catch(err => {
-        console.error('Model B error:', err);
+        console.error('[Battle] Model B error:', err);
         setHistory(prev => {
           const newHistory = [...prev];
           const lastTurn = { ...newHistory[newHistory.length - 1] };
-          lastTurn.responses.modelB.content = lastTurn.responses.modelB.content || 'Error: Failed to get response from Model B';
+          lastTurn.responses.modelB.content = lastTurn.responses.modelB.content || `Error: ${err.message || 'Failed to get response from Model B'}`;
           newHistory[newHistory.length - 1] = lastTurn;
           return newHistory;
         });
@@ -186,6 +192,7 @@ export default function BattleMode() {
 
       // Wait for both to complete (or fail) before ending battle state
       await Promise.allSettled([requestA, requestB]);
+      console.log('[Battle] Both requests settled');
 
     } catch (error) {
       console.error('Battle error:', error);
