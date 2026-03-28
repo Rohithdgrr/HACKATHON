@@ -95,17 +95,22 @@ export default function BattleMode() {
     const sessionId = `battle_${Date.now()}`;
     
     try {
-      const modelsResponse = await routerAPI.getModels();
-      const availableModels = modelsResponse.data.map(m => m.id);
+      // Get available models, with fallback to hardcoded list
+      let availableModels: string[] = [];
+      try {
+        const modelsResponse = await routerAPI.getModels();
+        availableModels = modelsResponse.data.map(m => m.id);
+      } catch {
+        availableModels = MODELS.map(m => m.id);
+      }
+
+      // Pick two DIFFERENT random models for blind battle
+      const shuffled = [...availableModels].sort(() => Math.random() - 0.5);
+      const modelAId = shuffled[0] || MODELS[0].id;
+      const modelBId = shuffled.length > 1 ? shuffled[1] : (MODELS[1]?.id || MODELS[0].id);
       
-      const routeA = await routerAPI.getMLPrediction(currentQuery);
-      const routeB = await routerAPI.getMLPrediction(currentQuery);
-      
-      const modelAId = routeA.selected_model || availableModels[0] || 'llama-3.1-8b';
-      const modelBId = routeB.selected_model || availableModels[1] || 'qwen-2.5-7b';
-      
-      const modelAInfo = MODELS.find(m => m.id === modelAId) || MODELS[0];
-      const modelBInfo = MODELS.find(m => m.id === modelBId) || MODELS[1];
+      const modelAInfo = MODELS.find(m => m.id === modelAId) || { id: modelAId, name: modelAId, size: '?', provider: 'Unknown' };
+      const modelBInfo = MODELS.find(m => m.id === modelBId) || { id: modelBId, name: modelBId, size: '?', provider: 'Unknown' };
 
       const initialTurn: BattleTurn = {
         query: currentQuery,
@@ -118,51 +123,70 @@ export default function BattleMode() {
 
       setHistory(prev => [...prev, initialTurn]);
 
-      const [respA, respB] = await Promise.all([
-        getChatResponseFromBackend(currentQuery, modelAInfo.id, (chunk) => {
-          setHistory(prev => {
-            const newHistory = [...prev];
-            const lastTurn = { ...newHistory[newHistory.length - 1] };
-            lastTurn.responses = {
-              ...lastTurn.responses,
-              modelA: { ...lastTurn.responses.modelA, content: lastTurn.responses.modelA.content + chunk }
-            };
-            newHistory[newHistory.length - 1] = lastTurn;
-            return newHistory;
-          });
-        }, sessionId),
-        getChatResponseFromBackend(currentQuery, modelBInfo.id, (chunk) => {
-          setHistory(prev => {
-            const newHistory = [...prev];
-            const lastTurn = { ...newHistory[newHistory.length - 1] };
-            lastTurn.responses = {
-              ...lastTurn.responses,
-              modelB: { ...lastTurn.responses.modelB, content: lastTurn.responses.modelB.content + chunk }
-            };
-            newHistory[newHistory.length - 1] = lastTurn;
-            return newHistory;
-          });
-        }, sessionId)
-      ]);
-
-      await routerAPI.submitFeedback({
-        query: currentQuery,
-        selected_model: modelAId,
-        user_rating: 4,
-        session_id: sessionId,
-        routing_strategy: routeA.strategy
+      // Run both requests independently (not Promise.all) so one failure doesn't block the other
+      const requestA = getChatResponseFromBackend(currentQuery, modelAInfo.id, (chunk) => {
+        setHistory(prev => {
+          const newHistory = [...prev];
+          const lastTurn = { ...newHistory[newHistory.length - 1] };
+          lastTurn.responses = {
+            ...lastTurn.responses,
+            modelA: { ...lastTurn.responses.modelA, content: lastTurn.responses.modelA.content + chunk }
+          };
+          newHistory[newHistory.length - 1] = lastTurn;
+          return newHistory;
+        });
+      }, `${sessionId}_A`).then(resp => {
+        setHistory(prev => {
+          const newHistory = [...prev];
+          const lastTurn = { ...newHistory[newHistory.length - 1] };
+          lastTurn.responses.modelA = { ...lastTurn.responses.modelA, content: resp.content, stats: resp.stats };
+          newHistory[newHistory.length - 1] = lastTurn;
+          return newHistory;
+        });
+      }).catch(err => {
+        console.error('Model A error:', err);
+        setHistory(prev => {
+          const newHistory = [...prev];
+          const lastTurn = { ...newHistory[newHistory.length - 1] };
+          lastTurn.responses.modelA.content = lastTurn.responses.modelA.content || 'Error: Failed to get response from Model A';
+          newHistory[newHistory.length - 1] = lastTurn;
+          return newHistory;
+        });
       });
 
-      setHistory(prev => {
-        const newHistory = [...prev];
-        const lastTurn = { ...newHistory[newHistory.length - 1] };
-        lastTurn.responses = {
-          modelA: { ...lastTurn.responses.modelA, content: respA.content, stats: respA.stats },
-          modelB: { ...lastTurn.responses.modelB, content: respB.content, stats: respB.stats }
-        };
-        newHistory[newHistory.length - 1] = lastTurn;
-        return newHistory;
+      const requestB = getChatResponseFromBackend(currentQuery, modelBInfo.id, (chunk) => {
+        setHistory(prev => {
+          const newHistory = [...prev];
+          const lastTurn = { ...newHistory[newHistory.length - 1] };
+          lastTurn.responses = {
+            ...lastTurn.responses,
+            modelB: { ...lastTurn.responses.modelB, content: lastTurn.responses.modelB.content + chunk }
+          };
+          newHistory[newHistory.length - 1] = lastTurn;
+          return newHistory;
+        });
+      }, `${sessionId}_B`).then(resp => {
+        setHistory(prev => {
+          const newHistory = [...prev];
+          const lastTurn = { ...newHistory[newHistory.length - 1] };
+          lastTurn.responses.modelB = { ...lastTurn.responses.modelB, content: resp.content, stats: resp.stats };
+          newHistory[newHistory.length - 1] = lastTurn;
+          return newHistory;
+        });
+      }).catch(err => {
+        console.error('Model B error:', err);
+        setHistory(prev => {
+          const newHistory = [...prev];
+          const lastTurn = { ...newHistory[newHistory.length - 1] };
+          lastTurn.responses.modelB.content = lastTurn.responses.modelB.content || 'Error: Failed to get response from Model B';
+          newHistory[newHistory.length - 1] = lastTurn;
+          return newHistory;
+        });
       });
+
+      // Wait for both to complete (or fail) before ending battle state
+      await Promise.allSettled([requestA, requestB]);
+
     } catch (error) {
       console.error('Battle error:', error);
     } finally {
@@ -175,21 +199,34 @@ export default function BattleMode() {
     const modelAId = turn.responses.modelA.info.id;
     const modelBId = turn.responses.modelB.info.id;
 
+    // Update leaderboard scores via recordVote
     try {
       if (winner === 'A') {
+        await recordVote(modelAId, modelBId);
         await routerAPI.submitFeedback({
           query: turn.query,
           selected_model: modelAId,
           user_rating: 5,
-          user_comment: 'Voted as winner in battle mode'
-        });
+          user_comment: `Won battle against ${modelBId}`
+        }).catch(() => {});
       } else if (winner === 'B') {
+        await recordVote(modelBId, modelAId);
         await routerAPI.submitFeedback({
           query: turn.query,
           selected_model: modelBId,
           user_rating: 5,
-          user_comment: 'Voted as winner in battle mode'
-        });
+          user_comment: `Won battle against ${modelAId}`
+        }).catch(() => {});
+      } else if (winner === 'tie') {
+        await recordVote(null, null);
+      } else {
+        // both_bad — no score changes but still record
+        await routerAPI.submitFeedback({
+          query: turn.query,
+          selected_model: modelAId,
+          user_rating: 1,
+          user_comment: 'Both models rated poorly in battle'
+        }).catch(() => {});
       }
     } catch (error) {
       console.error('Failed to submit vote feedback:', error);
