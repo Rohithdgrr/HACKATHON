@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Trophy, 
   Code2, 
-  Brain, 
+  Brain,
   Calculator, 
   MessageSquare, 
   Eye, 
@@ -18,7 +18,9 @@ import {
   Clock,
   ArrowUpRight,
   LayoutGrid,
-  Info
+  Info,
+  Zap,
+  Send
 } from 'lucide-react';
 import { Card, Badge } from './UI';
 import { cn } from '../lib/utils';
@@ -135,8 +137,12 @@ const ProviderIcon = ({ provider }: { provider: LeaderboardModel['provider'] }) 
   }
 };
 
-const LeaderboardTable = ({ category, data, compact = false, onExpand }: { category: Category; data: LeaderboardModel[]; compact?: boolean; onExpand?: () => void }) => {
+const LeaderboardTable = ({ category, data, compact = false, onExpand, searchQuery = '' }: { category: Category; data: LeaderboardModel[]; compact?: boolean; onExpand?: () => void; searchQuery?: string }) => {
   const Icon = CATEGORIES.find(c => c.id === category)?.icon || MessageSquare;
+  
+  const filteredData = searchQuery 
+    ? data.filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase()) || m.provider.toLowerCase().includes(searchQuery.toLowerCase()))
+    : data;
   
   return (
     <Card className="bg-white border-gray-100 overflow-hidden flex flex-col h-full group/card shadow-sm">
@@ -172,9 +178,16 @@ const LeaderboardTable = ({ category, data, compact = false, onExpand }: { categ
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {data.slice(0, compact ? 10 : undefined).map((model) => (
-              <tr key={model.name} className="hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-3 font-bold text-gray-400">{model.rank}</td>
+            {filteredData.slice(0, compact ? 10 : undefined).map((model) => (
+              <tr 
+                key={model.name} 
+                className="hover:bg-gray-50 transition-all duration-300 relative group/row"
+              >
+                {/* Hover glow effect */}
+                <div className="absolute inset-0 opacity-0 group-hover/row:opacity-100 transition-opacity duration-500 pointer-events-none">
+                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/20 via-purple-400/20 to-pink-400/20 blur-md" />
+                </div>
+                <td className="px-4 py-3 font-bold text-gray-400 relative z-10">{model.rank}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <ProviderIcon provider={model.provider} />
@@ -186,8 +199,8 @@ const LeaderboardTable = ({ category, data, compact = false, onExpand }: { categ
                     )}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-right font-mono font-bold text-gray-700">{model.score}</td>
-                <td className="px-4 py-3 text-right font-mono text-gray-400">{model.votes}</td>
+                <td className="px-4 py-3 text-right font-mono font-bold text-gray-700 relative z-10">{model.score}</td>
+                <td className="px-4 py-3 text-right font-mono text-gray-400 relative z-10">{model.votes}</td>
               </tr>
             ))}
           </tbody>
@@ -210,6 +223,7 @@ import { getLeaderboardData } from '../services/leaderboardService';
 
 export default function Leaderboard() {
   const [activeCategory, setActiveCategory] = useState<Category>('Overview');
+  const [searchQuery, setSearchQuery] = useState('');
   const realData = getLeaderboardData();
 
   // Map real data to LeaderboardModel format
@@ -225,7 +239,34 @@ export default function Leaderboard() {
 
   return (
     <div className="min-h-screen bg-white -m-6 lg:-m-10 p-6 lg:p-10 text-gray-900 font-sans">
-      <div className="max-w-7xl mx-auto space-y-10">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Search Input with Glow */}
+        <div className="relative max-w-2xl mx-auto">
+          {/* Multi-layer animated glow */}
+          <div className="absolute -inset-[2px] bg-gradient-to-r from-cyan-400 via-blue-500 via-purple-500 via-pink-500 to-orange-400 rounded-2xl opacity-0 focus-within:opacity-100 transition-all duration-500 blur-[4px] animate-pulse" />
+          <div className="absolute -inset-[3px] bg-gradient-to-r from-yellow-400 via-red-500 via-purple-600 via-blue-600 to-cyan-400 rounded-2xl opacity-0 focus-within:opacity-70 transition-all duration-700 blur-[8px] animate-pulse" style={{ animationDelay: '0.2s' }} />
+          <div className="absolute -inset-[4px] bg-gradient-to-br from-pink-400 via-purple-500 via-blue-500 to-cyan-400 rounded-2xl opacity-0 focus-within:opacity-50 transition-all duration-1000 blur-[12px] animate-pulse" style={{ animationDelay: '0.4s' }} />
+          
+          <div className="relative bg-white border border-gray-200 rounded-2xl p-3 shadow-lg shadow-black/5 focus-within:border-transparent focus-within:shadow-none transition-all flex items-center gap-3">
+            <Search size={20} className="text-gray-400 shrink-0" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search models or providers..."
+              className="w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-gray-900 placeholder-gray-400 text-sm font-medium"
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery('')}
+                className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-900 transition-colors shrink-0"
+              >
+                <Zap size={16} />
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Tab Navigation */}
         <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-xl border border-gray-100 overflow-x-auto scrollbar-hide sticky top-0 z-20">
           {CATEGORIES.map((cat) => (
@@ -261,24 +302,28 @@ export default function Leaderboard() {
                   data={displayData} 
                   compact 
                   onExpand={() => setActiveCategory('Text')}
+                  searchQuery={searchQuery}
                 />
                 <LeaderboardTable 
                   category="Code" 
                   data={MOCK_DATA['Code']} 
                   compact 
                   onExpand={() => setActiveCategory('Code')}
+                  searchQuery={searchQuery}
                 />
                 <LeaderboardTable 
                   category="Text-to-Image" 
                   data={MOCK_DATA['Text-to-Image']} 
                   compact 
                   onExpand={() => setActiveCategory('Text-to-Image')}
+                  searchQuery={searchQuery}
                 />
                 <LeaderboardTable 
                   category="Image Edit" 
                   data={MOCK_DATA['Image Edit']} 
                   compact 
                   onExpand={() => setActiveCategory('Image Edit')}
+                  searchQuery={searchQuery}
                 />
               </div>
             ) : (
@@ -306,11 +351,15 @@ export default function Leaderboard() {
                   </div>
                 </div>
                 
-                <LeaderboardTable category={activeCategory} data={displayData} />
+                <LeaderboardTable category={activeCategory} data={displayData} searchQuery={searchQuery} />
                 
                 {/* Stats Cards for Category */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <Card className="p-6 bg-white border-gray-100 flex items-center gap-4 shadow-sm">
+                  <Card className="p-6 bg-white border-gray-100 flex items-center gap-4 shadow-sm relative group/card hover:shadow-lg transition-all duration-500">
+                    {/* Card hover glow */}
+                    <div className="absolute inset-0 rounded-xl opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none overflow-hidden">
+                      <div className="absolute -inset-2 bg-gradient-to-r from-cyan-400/30 via-purple-400/30 to-pink-400/30 blur-xl" />
+                    </div>
                     <div className="w-12 h-12 bg-gray-50 text-gray-900 rounded-2xl flex items-center justify-center">
                       <ArrowUpRight size={24} />
                     </div>
@@ -319,7 +368,11 @@ export default function Leaderboard() {
                       <p className="text-lg font-bold text-gray-900">{displayData[0].name}</p>
                     </div>
                   </Card>
-                  <Card className="p-6 bg-white border-gray-100 flex items-center gap-4 shadow-sm">
+                  <Card className="p-6 bg-white border-gray-100 flex items-center gap-4 shadow-sm relative group/card hover:shadow-lg transition-all duration-500">
+                    {/* Card hover glow */}
+                    <div className="absolute inset-0 rounded-xl opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none overflow-hidden">
+                      <div className="absolute -inset-2 bg-gradient-to-r from-amber-400/30 via-orange-400/30 to-yellow-400/30 blur-xl" />
+                    </div>
                     <div className="w-12 h-12 bg-gray-50 text-gray-900 rounded-2xl flex items-center justify-center">
                       <Trophy size={24} />
                     </div>
@@ -328,7 +381,11 @@ export default function Leaderboard() {
                       <p className="text-lg font-bold text-gray-900">{displayData[0].provider}</p>
                     </div>
                   </Card>
-                  <Card className="p-6 bg-white border-gray-100 flex items-center gap-4 shadow-sm">
+                  <Card className="p-6 bg-white border-gray-100 flex items-center gap-4 shadow-sm relative group/card hover:shadow-lg transition-all duration-500">
+                    {/* Card hover glow */}
+                    <div className="absolute inset-0 rounded-xl opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none overflow-hidden">
+                      <div className="absolute -inset-2 bg-gradient-to-r from-green-400/30 via-emerald-400/30 to-teal-400/30 blur-xl" />
+                    </div>
                     <div className="w-12 h-12 bg-gray-50 text-gray-900 rounded-2xl flex items-center justify-center">
                       <ImageIcon size={24} />
                     </div>
