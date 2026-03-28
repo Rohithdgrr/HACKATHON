@@ -1,0 +1,5 @@
+{
+  "name": "HRouter",
+  "description": "Intelligent LLM routing system that dynamically selects the best model for each query based on cost, speed, and capability.",
+  "requestFramePermissions": []
+}
